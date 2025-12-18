@@ -159,7 +159,7 @@ export default function SignInForm() {
   return (
     <div className="flex flex-col flex-1">
       <div className="w-full max-w-md pt-10 mx-auto">
-        <Link to="/" className="inline-flex items-center text-sm text-gray-500">
+        <Link to="/dashboard" className="inline-flex items-center text-sm text-gray-500">
           <ChevronLeftIcon className="size-5" />
           Back to dashboard
         </Link>
@@ -173,7 +173,7 @@ export default function SignInForm() {
         <form onSubmit={handleSignIn} className="space-y-6">
           {/* Email */}
           <div>
-            <Label>Email *</Label>
+            <Label>Email <span style={{ color: "red" }}>*</span></Label>
             <Input
               value={email}
               onChange={e => setEmail(e.target.value)}
@@ -191,10 +191,12 @@ export default function SignInForm() {
             </Button>
           )}
 
+          <p className="text-sm text-gray-500">don't have an account? <Link to="/signup" className="text-brand-500 hover:underline">Sign Up</Link></p>
+
           {/* OTP */}
           {otpSent && (
             <div>
-              <Label>OTP *</Label>
+              <Label>OTP <span style={{ color: "red" }}>*</span></Label>
               <div className="flex gap-2 mt-2">
                 {otp.map((digit, i) => (
                   <input
@@ -247,7 +249,7 @@ export default function SignInForm() {
           {/* Password */}
           {otpSent && (
             <div>
-              <Label>Password *</Label>
+              <Label>Password <span style={{ color: "red" }}>*</span></Label>
               <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
