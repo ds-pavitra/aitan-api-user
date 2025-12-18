@@ -15,6 +15,10 @@ import Calendar from "./pages/Calendar";
 import BasicTables from "./pages/Tables/BasicTables";
 import FormElements from "./pages/Forms/FormElements";
 import Blank from "./pages/Blank";
+import ManageApiKeys from "./pages/ManageApiKeys";
+import Reports from "./pages/Reports";
+import Logs from "./pages/Logs";
+import BatchProcessing from "./pages/BatchProcessing";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
@@ -51,6 +55,12 @@ export default function App() {
             {/* Charts */}
             <Route path="/line-chart" element={<LineChart />} />
             <Route path="/bar-chart" element={<BarChart />} />
+
+            {/* 🔹 NEW: API admin pages */}
+            <Route path="/manage-api-keys" element={<ManageApiKeys />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/logs" element={<Logs />} />
+            <Route path="/batch-processing" element={<BatchProcessing />} />
           </Route>
 
           {/* Auth Layout */}

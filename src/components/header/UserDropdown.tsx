@@ -19,9 +19,9 @@ export default function UserDropdown() {
         onClick={toggleDropdown}
         className="flex items-center text-gray-700 dropdown-toggle dark:text-gray-400"
       >
-        <span className="mr-3 overflow-hidden rounded-full h-11 w-11">
+        {/* <span className="mr-3 overflow-hidden rounded-full h-11 w-11">
           <img src="/images/user/owner.jpg" alt="User" />
-        </span>
+        </span> */}
 
         <span className="block mr-1 font-medium text-theme-sm">Musharof</span>
         <svg
@@ -81,10 +81,10 @@ export default function UserDropdown() {
                   fill=""
                 />
               </svg>
-              Edit profile
+              Profile
             </DropdownItem>
           </li>
-          <li>
+          {/* <li>
             <DropdownItem
               onItemClick={closeDropdown}
               tag="a"
@@ -108,7 +108,7 @@ export default function UserDropdown() {
               </svg>
               Account settings
             </DropdownItem>
-          </li>
+          </li> */}
           <li>
             <DropdownItem
               onItemClick={closeDropdown}
@@ -131,7 +131,7 @@ export default function UserDropdown() {
                   fill=""
                 />
               </svg>
-              Support
+              Documentation
             </DropdownItem>
           </li>
         </ul>

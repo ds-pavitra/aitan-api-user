@@ -59,8 +59,8 @@ export default function SignUpForm() {
     if (!form.lastName) e.lastName = "Required";
     if (!form.businessName) e.businessName = "Required";
     if (!form.businessType) e.businessType = "Required";
-    // if (!/^\d{10}$/.test(form.mobile)) e.mobile = "Invalid mobile";
-    // if (!form.email) e.email = "Required";
+    if (!/^\d{10}$/.test(form.mobile)) e.mobile = "Invalid mobile";
+    if (!form.email) e.email = "Required";
     if (!acceptedTerms) e.terms = "Accept terms";
 
     if (form.optionalId) {
@@ -233,6 +233,28 @@ export default function SignUpForm() {
             </div>
 
             <div>
+              <Label>Mobile <span style={{ color: "red" }}>*</span></Label>
+              <Input
+                type="tel"
+                placeholder="Mobile"
+                className="w-full px-4 py-3 border rounded-lg"
+                onChange={(e) =>
+                  updateField("mobile", e.target.value)
+                }
+              />
+            </div>
+
+            <div>
+              <Label>Email <span style={{ color: "red" }}>*</span></Label>
+              <Input
+                placeholder="Email"
+                onChange={(e) =>
+                  updateField("email", e.target.value)
+                }
+              />
+            </div>
+
+            <div>
               <Label>GST / MSME / Gumasta No.</Label>
               <Input
                 placeholder="Enter ID number"
@@ -262,7 +284,7 @@ export default function SignUpForm() {
               onClick={sendOtp}
               className="w-full h-9 items-center justify-center rounded-full bg-indigo-600 px-4 text-xs font-medium text-white hover:bg-indigo-500 mb-10"
             >
-              Continue
+              Send OTP
             </button>
           </>
         )}
@@ -274,31 +296,6 @@ export default function SignUpForm() {
             <h1 className="text-center font-semibold text-title-sm">
               OTP Verification
             </h1>
-
-            <div>
-              <Label>
-                Email <span style={{ color: "red" }}>*</span>
-              </Label>
-
-              <div className="flex gap-2 items-center">
-                <div className="flex-1">
-                  <Input
-                    placeholder="Email"
-                    onChange={(e) =>
-                      updateField("email", e.target.value)
-                    }
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={sendOtp}
-                  className="h-9 px-3 rounded-md bg-indigo-600 text-white text-xs whitespace-nowrap"
-                >
-                  Send OTP
-                </button>
-              </div>
-            </div>
 
 
             <Label>Email OTP</Label>
@@ -334,34 +331,6 @@ export default function SignUpForm() {
             >
               Verify Email OTP
             </button>
-
-
-            <div>
-              <Label>
-                Mobile <span style={{ color: "red" }}>*</span>
-              </Label>
-
-              <div className="flex gap-2 items-center">
-                <div className="flex-1">
-                  <Input
-                    type="tel"
-                    placeholder="Mobile"
-                    onChange={(e) =>
-                      updateField("mobile", e.target.value)
-                    }
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={sendOtp}
-                  className="h-9 px-3 rounded-md bg-indigo-600 text-white text-xs whitespace-nowrap"
-                >
-                  Send OTP
-                </button>
-              </div>
-            </div>
-
 
             <Label>Mobile OTP</Label>
             <div className="flex justify-center gap-2">
