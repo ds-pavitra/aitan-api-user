@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
+import { useAppDispatch, useAppSelector } from "../hooks";
+import { logout } from "../features/auth/authSlice";
 
 import {
   // BoxCubeIcon,
@@ -193,9 +195,11 @@ const AppSidebar: React.FC = () => {
     });
   };
 
+  const dispatch = useAppDispatch();
+  const user = useAppSelector((s) => s.auth.user);
+
   const handleLogout = () => {
-    // remove token if any
-    localStorage.removeItem("token");
+    dispatch(logout());
     // redirect to sign-in
     navigate("/signin");
   };

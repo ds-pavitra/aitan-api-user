@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Button from "../ui/button/Button";
+import { useLoginMutation, useSendOtpMutation, useVerifyOtpMutation } from "../../features/api/apiSlice";
+import { useAppDispatch } from "../../hooks";
+import { setCredentials } from "../../features/auth/authSlice";
 
 const OTP_LENGTH = 6;
 const MAX_RESEND = 3;
@@ -26,6 +29,12 @@ export default function SignInForm() {
   }>({});
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const navigate = useNavigate();
+
+  const dispatch = useAppDispatch();
+  const [login] = useLoginMutation();
+  const [sendOtpMutation] = useSendOtpMutation();
+  const [verifyOtpMutation] = useVerifyOtpMutation();
 
   /* ---------------- Timer ---------------- */
   useEffect(() => {
@@ -37,7 +46,7 @@ export default function SignInForm() {
   }, [timer]);
 
   /* ---------------- Send OTP ---------------- */
-  const sendOtp = async () => {
+  const handleSendOtp = async () => {
     if (resendCount >= MAX_RESEND) {
       setErrors({ otp: "OTP resend limit reached" });
       return;
@@ -52,11 +61,7 @@ export default function SignInForm() {
     setLoading(true);
 
     try {
-      await fetch("/api/auth/send-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
+      await sendOtpMutation({ contactMethod: "EMAIL", contactValue: email, purpose: "LOGIN" }).unwrap();
 
       setOtpSent(true);
       setTimer(60);
@@ -64,8 +69,8 @@ export default function SignInForm() {
       setResendCount(c => c + 1);
 
       setTimeout(() => otpRefs.current[0]?.focus(), 100);
-    } catch {
-      setErrors({ email: "Failed to send OTP" });
+    } catch (err: any) {
+      setErrors({ email: err?.data?.message || err?.message || "Failed to send OTP" });
     } finally {
       setLoading(false);
     }
@@ -137,20 +142,21 @@ export default function SignInForm() {
     setErrors({});
 
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          password,
-          otp: otpValue,
-        }),
-      });
+      // verify OTP first
+      await verifyOtpMutation({ contactMethod: "EMAIL", contactValue: email, purpose: "LOGIN", otp: otpValue }).unwrap();
 
-      if (!res.ok) throw new Error();
-      alert("Login successful");
-    } catch {
-      setErrors({ otp: "Invalid OTP or password" });
+      // on success call login (only email + password)
+      const res = await login({ email, password }).unwrap();
+      if (res && res.token) {
+        dispatch(setCredentials({ token: res.token, user: res.user }));
+        navigate("/dashboard");
+        return;
+      }
+      setErrors({ otp: "Login failed" });
+    } catch (err: any) {
+      // prioritize verify errors for OTP, otherwise login errors
+      const msg = err?.data?.message || err?.message || "Invalid OTP or password";
+      setErrors({ otp: msg });
     } finally {
       setLoading(false);
     }
@@ -186,7 +192,7 @@ export default function SignInForm() {
 
           {/* Send OTP */}
           {!otpSent && (
-            <Button onClick={sendOtp} disabled={loading}>
+            <Button onClick={handleSendOtp} disabled={loading}>
               {loading ? "Sending OTP..." : "Send OTP"}
             </Button>
           )}
@@ -236,7 +242,7 @@ export default function SignInForm() {
                 ) : (
                   <button
                     type="button"
-                    onClick={sendOtp}
+                    onClick={handleSendOtp}
                     className="text-brand-500 hover:underline"
                   >
                     Resend OTP ({MAX_RESEND - resendCount} left)

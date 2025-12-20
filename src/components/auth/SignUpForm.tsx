@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import { EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Checkbox from "../form/input/Checkbox";
 import Select from "../form/Select";
+import { useRegisterMutation, useSendOtpMutation, useVerifyOtpMutation } from "../../features/api/apiSlice";
 
 const OTP_LENGTH = 6;
 
@@ -48,52 +50,67 @@ export default function SignUpForm() {
   const emailRefs = useRef<(HTMLInputElement | null)[]>([]);
   const mobileRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  const [sendOtpMutation] = useSendOtpMutation();
+  const [register] = useRegisterMutation();
+
   const [emailVerified, setEmailVerified] = useState(false);
   const [mobileVerified, setMobileVerified] = useState(false);
+  const [verifyOtpMutation] = useVerifyOtpMutation();
+  const navigate = useNavigate();
 
   /* -------- Send OTP -------- */
-  const sendOtp = async () => {
+  const validateStep1 = () => {
     const e: Record<string, string> = {};
-
     if (!form.firstName) e.firstName = "Required";
     if (!form.lastName) e.lastName = "Required";
     if (!form.businessName) e.businessName = "Required";
     if (!form.businessType) e.businessType = "Required";
-    // if (!/^\d{10}$/.test(form.mobile)) e.mobile = "Invalid mobile";
-    // if (!form.email) e.email = "Required";
     if (!acceptedTerms) e.terms = "Accept terms";
 
     if (form.optionalId) {
       const v = form.optionalId.trim();
-      const valid =
-        GST_REGEX.test(v) ||
-        MSME_REGEX.test(v) ||
-        GUMASTA_REGEX.test(v);
+      const valid = GST_REGEX.test(v) || MSME_REGEX.test(v) || GUMASTA_REGEX.test(v);
+      if (!valid) e.optionalId = "Enter valid Gumasta/MSME/GST number";
+    }
 
-      if (!valid) {
-        e.optionalId =
-          "Enter valid GST / MSME (UDYAM) / Gumasta number";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSendOtp = async (method: "EMAIL" | "MOBILE" | "BOTH" = "BOTH") => {
+    // Per-field validation: email or mobile must be present and valid depending on method
+    try {
+      if (method === "EMAIL") {
+        if (!form.email) throw new Error("Email is required");
+        if (!/^\S+@\S+\.\S+$/.test(form.email)) throw new Error("Enter a valid email");
+        await sendOtpMutation({ contactMethod: "EMAIL", contactValue: form.email, purpose: "REGISTER" }).unwrap();
+      } else if (method === "MOBILE") {
+        if (!form.mobile) throw new Error("Mobile is required");
+        if (!/^[6-9]\d{9}$/.test(form.mobile)) throw new Error("Enter valid 10-digit mobile starting with 6-9");
+        await sendOtpMutation({ contactMethod: "MOBILE", contactValue: form.mobile, purpose: "REGISTER" }).unwrap();
+      } else {
+        // BOTH: send to whichever is present and valid
+        const triggers: any[] = [];
+        if (form.email) {
+          if (!/^\S+@\S+\.\S+$/.test(form.email)) throw new Error("Enter a valid email");
+          triggers.push(sendOtpMutation({ contactMethod: "EMAIL", contactValue: form.email, purpose: "REGISTER" }));
+        } else {
+          throw new Error("Email is required");
+        }
+        if (form.mobile) {
+          if (!/^[6-9]\d{9}$/.test(form.mobile)) throw new Error("Enter valid 10-digit mobile starting with 6-9");
+          triggers.push(sendOtpMutation({ contactMethod: "MOBILE", contactValue: form.mobile, purpose: "REGISTER" }));
+        } else {
+          throw new Error("Mobile is required");
+        }
+        await Promise.all(triggers.map((t: any) => t.unwrap()));
       }
+
+      setStep(2);
+      setTimeout(() => emailRefs.current[0]?.focus(), 100);
+    } catch (err: any) {
+      setErrors({ email: err?.data?.message || err?.message || String(err) });
     }
-
-    if (Object.keys(e).length) {
-      setErrors(e);
-      return;
-    }
-
-    setErrors({});
-
-    await fetch("/api/auth/send-signup-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: form.email,
-        mobile: form.mobile,
-      }),
-    });
-
-    setStep(2);
-    setTimeout(() => emailRefs.current[0]?.focus(), 100);
   };
 
   /* -------- OTP Input -------- */
@@ -129,14 +146,32 @@ export default function SignUpForm() {
     type === "email" ? setEmailOtp(filled) : setMobileOtp(filled);
   };
 
-  const verifyEmailOtp = () => {
-    if (emailOtp.join("").length === OTP_LENGTH)
+  const verifyEmailOtp = async () => {
+    const code = emailOtp.join("");
+    if (code.length !== OTP_LENGTH) {
+      setErrors({ otp: "Enter 6-digit OTP" });
+      return;
+    }
+    try {
+      await verifyOtpMutation({ contactMethod: "EMAIL", contactValue: form.email, purpose: "REGISTER", otp: code }).unwrap();
       setEmailVerified(true);
+    } catch (err: any) {
+      setErrors({ otp: err?.data?.message || err?.message || "Invalid OTP" });
+    }
   };
 
-  const verifyMobileOtp = () => {
-    if (mobileOtp.join("").length === OTP_LENGTH)
+  const verifyMobileOtp = async () => {
+    const code = mobileOtp.join("");
+    if (code.length !== OTP_LENGTH) {
+      setErrors({ otp: "Enter 6-digit OTP" });
+      return;
+    }
+    try {
+      await verifyOtpMutation({ contactMethod: "MOBILE", contactValue: form.mobile, purpose: "REGISTER", otp: code }).unwrap();
       setMobileVerified(true);
+    } catch (err: any) {
+      setErrors({ otp: err?.data?.message || err?.message || "Invalid OTP" });
+    }
   };
 
   useEffect(() => {
@@ -161,13 +196,40 @@ export default function SignUpForm() {
       return;
     }
 
-    await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
+    // Ensure email and mobile are valid before sending register
+    if (!form.email || !/^\S+@\S+\.\S+$/.test(form.email)) {
+      setErrors({ email: "Enter a valid email" });
+      return;
+    }
+    if (!form.mobile || !/^[6-9]\d{9}$/.test(form.mobile)) {
+      setErrors({ mobile: "Enter valid 10-digit mobile starting with 6-9" });
+      return;
+    }
 
-    alert("Account created successfully");
+    const payload = {
+      firstName: form.firstName,
+      lastName: form.lastName,
+      email: form.email,
+      mobile: form.mobile,
+      password: form.password,
+      businessType: ((): string => {
+        const m = (form.businessType || "").toLowerCase();
+        if (m.includes("public")) return "PUBLIC";
+        if (m.includes("private")) return "PRIVATE";
+        if (m.includes("llp")) return "LLP";
+        return m.toUpperCase() || "PROPRIETOR";
+      })(),
+      businessName: form.businessName,
+      registrationNo: form.optionalId ? form.optionalId : null,
+    };
+
+    try {
+      await register(payload).unwrap();
+      // on success go to sign-in
+      navigate("/signin");
+    } catch (err: any) {
+      setErrors({ email: err?.data?.message || err?.message || "Failed to register" });
+    }
   };
 
   return (
@@ -233,9 +295,9 @@ export default function SignUpForm() {
             </div>
 
             <div>
-              <Label>GST / MSME / Gumasta No.</Label>
+              <Label>Gumasta / MSME / GST</Label>
               <Input
-                placeholder="Enter ID number"
+                placeholder="Enter Gumasta / MSME / GST number (optional)"
                 value={form.optionalId}
                 onChange={(e) =>
                   updateField("optionalId", e.target.value)
@@ -259,7 +321,12 @@ export default function SignUpForm() {
             </div>
 
             <button
-              onClick={sendOtp}
+              onClick={() => {
+                if (validateStep1()) {
+                  setStep(2);
+                  setTimeout(() => emailRefs.current[0]?.focus(), 100);
+                }
+              }}
               className="w-full h-9 items-center justify-center rounded-full bg-indigo-600 px-4 text-xs font-medium text-white hover:bg-indigo-500 mb-10"
             >
               Continue
@@ -292,7 +359,7 @@ export default function SignUpForm() {
 
                 <button
                   type="button"
-                  onClick={sendOtp}
+                  onClick={() => handleSendOtp("EMAIL")}
                   className="h-9 px-3 rounded-md bg-indigo-600 text-white text-xs whitespace-nowrap"
                 >
                   Send OTP
@@ -346,15 +413,17 @@ export default function SignUpForm() {
                   <Input
                     type="tel"
                     placeholder="Mobile"
+                    value={form.mobile}
                     onChange={(e) =>
-                      updateField("mobile", e.target.value)
+                      updateField("mobile", e.target.value.replace(/\D/g, "").slice(0, 10))
                     }
+                    className="max-w-full"
                   />
                 </div>
 
                 <button
                   type="button"
-                  onClick={sendOtp}
+                  onClick={() => handleSendOtp("MOBILE")}
                   className="h-9 px-3 rounded-md bg-indigo-600 text-white text-xs whitespace-nowrap"
                 >
                   Send OTP
